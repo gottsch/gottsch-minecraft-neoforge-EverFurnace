@@ -25,6 +25,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+import net.minecraft.world.level.block.entity.FuelValues;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -45,6 +46,8 @@ public interface IEverFurnaceBlockEntity {
 
     @Accessor
     int getLitDuration();
+    @Accessor
+    public void setLitDuration(int litDuration);
 
     @Accessor
     int getCookingProgress();
@@ -66,12 +69,15 @@ public interface IEverFurnaceBlockEntity {
     public boolean callIsLit();
 
     @Invoker
-    public static boolean callCanBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, NonNullList<ItemStack> inventory, int maxStackSize, AbstractFurnaceBlockEntity furnace) {
+    public int callGetBurnDuration(FuelValues fuelValues, ItemStack stack);
+
+    @Invoker
+    public static boolean callCanBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<? extends AbstractCookingRecipe> recipe, SingleRecipeInput recipeInput, NonNullList<ItemStack> items, int maxStackSize) {
         throw new AssertionError();
     }
 
     @Invoker
-    public static boolean callBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, NonNullList<ItemStack> inventory, int maxStackSize, AbstractFurnaceBlockEntity furnace) {
+    public static boolean callBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, SingleRecipeInput recipeInput, NonNullList<ItemStack> items, int maxStackSize) {
         throw new AssertionError();
     }
 }

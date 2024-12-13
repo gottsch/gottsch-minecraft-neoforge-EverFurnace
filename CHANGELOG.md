@@ -1,4 +1,4 @@
-# Changelog for Neoforge EverFurnace 1.21.1
+# Changelog for Neoforge EverFurnace 1.21.3
 
 All notable changes to this project will be documented in this file.
 

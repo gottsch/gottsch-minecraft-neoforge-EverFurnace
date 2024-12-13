@@ -20,13 +20,13 @@ package mod.gottsch.neoforge.everfurnace.core.mixin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.inventory.RecipeCraftingHolder;
 import net.minecraft.world.inventory.StackedContentsCompatible;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
@@ -71,20 +71,20 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
     }
 
     @Inject(method = "serverTick", at = @At("HEAD")) // target more specifically somewhere closer to the actual calculations?
-    private static void onTick(Level world, BlockPos pos, BlockState state, AbstractFurnaceBlockEntity blockEntity, CallbackInfo ci) {
+    private static void onTick(ServerLevel level, BlockPos pos, BlockState state, AbstractFurnaceBlockEntity furnace, CallbackInfo ci) {
         // cast block entity as a mixin block entity
-        EverFurnaceBlockEntity blockEntityMixin = (EverFurnaceBlockEntity) (Object) blockEntity;
-        IEverFurnaceBlockEntity everFurnaceBlockEntity = (IEverFurnaceBlockEntity) ((Object) blockEntity);
+        EverFurnaceBlockEntity blockEntityMixin = (EverFurnaceBlockEntity) (Object) furnace;
+        IEverFurnaceBlockEntity everFurnaceBlockEntity = (IEverFurnaceBlockEntity) ((Object) furnace);
 
         // record last world time
         long localLastGameTime = blockEntityMixin.getEverfurnace$lastGameTime();
-        blockEntityMixin.setEverfurnace$lastGameTime(world.getGameTime());
+        blockEntityMixin.setEverfurnace$lastGameTime(level.getGameTime());
         if (!everFurnaceBlockEntity.callIsLit()) {
             return;
         }
 
         // calculate the difference between game time and the lastGameTime
-        long deltaTime = blockEntity.getLevel().getGameTime() - localLastGameTime;
+        long deltaTime = furnace.getLevel().getGameTime() - localLastGameTime;
 
         // exit if not enough time has passed
         if (deltaTime < 20) {
@@ -102,11 +102,12 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
         // get the output stack
         ItemStack outputStack = everFurnaceBlockEntity.getItems().get(OUTPUT_SLOT);
         // return if it is already maxed out
-        if (!outputStack.isEmpty() && outputStack.getCount() == blockEntity.getMaxStackSize()) return;
+        if (!outputStack.isEmpty() && outputStack.getCount() == furnace.getMaxStackSize()) return;
 
         // test if can accept recipe output
-        RecipeHolder recipeholder = (RecipeHolder)everFurnaceBlockEntity.getQuickCheck().getRecipeFor(new SingleRecipeInput(cookStack), world).orElse(null);
-        if (!IEverFurnaceBlockEntity.callCanBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) return;
+        SingleRecipeInput singleRecipeInput = new SingleRecipeInput(cookStack);
+        RecipeHolder recipeholder = (RecipeHolder)everFurnaceBlockEntity.getQuickCheck().getRecipeFor(new SingleRecipeInput(cookStack), level).orElse(null);
+        if (!IEverFurnaceBlockEntity.callCanBurn(level.registryAccess(), recipeholder, singleRecipeInput, everFurnaceBlockEntity.getItems(), furnace.getMaxStackSize())) return;
         /////////////////////////
 
         /*
@@ -115,7 +116,13 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
         // calculate totalBurnTimeRemaining
         ItemStack fuelStack = everFurnaceBlockEntity.getItems().get(FUEL_SLOT);
         if (fuelStack.isEmpty()) return;
-        long totalBurnTimeRemaining = (long) (fuelStack.getCount() - 1) * everFurnaceBlockEntity.getLitDuration() + everFurnaceBlockEntity.getLitTime();
+
+        // have to calculate fuel time as it is no longer calculated during readNbt() as in 1.21.1
+        if (everFurnaceBlockEntity.getLitDuration() == 0) {
+            everFurnaceBlockEntity.setLitDuration(everFurnaceBlockEntity.callGetBurnDuration(level.fuelValues(), fuelStack));
+        }
+
+       long totalBurnTimeRemaining = (long) (fuelStack.getCount() - 1) * everFurnaceBlockEntity.getLitDuration() + everFurnaceBlockEntity.getLitTime();
 
         // calculate totalCookTimeRemaining
         long totalCookTimeRemaining = (long) (cookStack.getCount() -1) * everFurnaceBlockEntity.getCookingTotalTime() + (everFurnaceBlockEntity.getCookingTotalTime() - everFurnaceBlockEntity.getCookingProgress());
@@ -131,14 +138,13 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
 
         if (actualAppliedTime < everFurnaceBlockEntity.getLitDuration()) {
             // reduce burn time
-            //blockEntity.litTime =- (int) actualAppliedTime;
             everFurnaceBlockEntity.setLitTime(everFurnaceBlockEntity.getLitTime() - (int) actualAppliedTime);
             if (everFurnaceBlockEntity.getLitTime() <= 0) {
                 // reduce the size of the fuel stack
                 fuelStack.shrink(1);
                 if (fuelStack.isEmpty()) {
                     everFurnaceBlockEntity.setLitTime(0);
-                    everFurnaceBlockEntity.getItems().set(1, fuelStack.getCraftingRemainingItem());
+                    everFurnaceBlockEntity.getItems().set(1, fuelStack.getItem().getCraftingRemainder());
                 } else {
                     everFurnaceBlockEntity.setLitTime(everFurnaceBlockEntity.getLitTime() + everFurnaceBlockEntity.getLitDuration());
                 }
@@ -156,7 +162,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
             }
             if (fuelStack.isEmpty()) {
                 everFurnaceBlockEntity.setLitTime(0);
-                everFurnaceBlockEntity.getItems().set(1, fuelStack.getCraftingRemainingItem());
+                everFurnaceBlockEntity.getItems().set(1, fuelStack.getItem().getCraftingRemainder());
             } else {
                 everFurnaceBlockEntity.setLitTime(everFurnaceBlockEntity.getLitTime()
                         - (int) everFurnaceBlockEntity.getLitDuration());
@@ -170,8 +176,8 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
                 + (int) actualAppliedTime);
 
             if (everFurnaceBlockEntity.getCookingProgress() >= everFurnaceBlockEntity.getCookingTotalTime()) {
-                if (IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) {
-                    blockEntity.setRecipeUsed(recipeholder);
+                if (IEverFurnaceBlockEntity.callBurn(level.registryAccess(), recipeholder, singleRecipeInput, everFurnaceBlockEntity.getItems(), furnace.getMaxStackSize())) {
+                    furnace.setRecipeUsed(recipeholder);
                 }
                 if (cookStack.isEmpty()) {
                     everFurnaceBlockEntity.setCookingProgress(0);
@@ -190,18 +196,18 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
             // reduced stack by quotient
             boolean isSuccessful = false;
             for (int iterations = 0; iterations < quotient; iterations++) {
-                isSuccessful |= IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity);
+                isSuccessful |= IEverFurnaceBlockEntity.callBurn(level.registryAccess(), recipeholder, singleRecipeInput, everFurnaceBlockEntity.getItems(), furnace.getMaxStackSize());
             }
             // update last recipe
-            if (isSuccessful) blockEntity.setRecipeUsed(recipeholder);
+            if (isSuccessful) furnace.setRecipeUsed(recipeholder);
 
             // increment cook time
             everFurnaceBlockEntity.setCookingProgress(everFurnaceBlockEntity.getCookingProgress()
              + (int) remainder);
 
             if (everFurnaceBlockEntity.getCookingProgress() >= everFurnaceBlockEntity.getCookingTotalTime()) {
-                if (IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) {
-                    blockEntity.setRecipeUsed(recipeholder);
+                if (IEverFurnaceBlockEntity.callBurn(level.registryAccess(), recipeholder, singleRecipeInput, everFurnaceBlockEntity.getItems(), furnace.getMaxStackSize())) {
+                    furnace.setRecipeUsed(recipeholder);
                 }
                 if (cookStack.isEmpty()) {
                     everFurnaceBlockEntity.setCookingProgress(0);
@@ -216,8 +222,8 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
 
         if(!everFurnaceBlockEntity.callIsLit()) {
             state = state.setValue(AbstractFurnaceBlock.LIT, everFurnaceBlockEntity.callIsLit());
-            world.setBlock(pos, state, 3);
-            AbstractFurnaceBlockEntity.setChanged(world, pos, state);
+            level.setBlock(pos, state, 3);
+            AbstractFurnaceBlockEntity.setChanged(level, pos, state);
         }
     }
 
