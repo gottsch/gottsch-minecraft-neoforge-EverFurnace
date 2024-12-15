@@ -25,7 +25,6 @@ import net.minecraft.world.inventory.RecipeCraftingHolder;
 import net.minecraft.world.inventory.StackedContentsCompatible;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
@@ -105,8 +104,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
         if (!outputStack.isEmpty() && outputStack.getCount() == blockEntity.getMaxStackSize()) return;
 
         // test if can accept recipe output
-        RecipeHolder recipeholder = (RecipeHolder)everFurnaceBlockEntity.getQuickCheck().getRecipeFor(new SingleRecipeInput(cookStack), world).orElse(null);
-        if (!IEverFurnaceBlockEntity.callCanBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) return;
+        RecipeHolder recipeholder = everFurnaceBlockEntity.getQuickCheck().getRecipeFor(blockEntity, world).orElse(null);if (!IEverFurnaceBlockEntity.callCanBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) return;
         /////////////////////////
 
         /*

@@ -19,11 +19,11 @@ package mod.gottsch.neoforge.everfurnace.core.mixin;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.AbstractCookingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -60,7 +60,7 @@ public interface IEverFurnaceBlockEntity {
     NonNullList<ItemStack> getItems();
 
     @Accessor
-    RecipeManager.CachedCheck<SingleRecipeInput, ? extends AbstractCookingRecipe> getQuickCheck();
+    RecipeManager.CachedCheck<Container, ? extends AbstractCookingRecipe> getQuickCheck();
 
     @Invoker
     public boolean callIsLit();
