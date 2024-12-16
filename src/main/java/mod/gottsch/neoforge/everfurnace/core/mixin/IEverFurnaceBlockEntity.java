@@ -66,12 +66,8 @@ public interface IEverFurnaceBlockEntity {
     public boolean callIsLit();
 
     @Invoker
-    public static boolean callCanBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, NonNullList<ItemStack> inventory, int maxStackSize, AbstractFurnaceBlockEntity furnace) {
-        throw new AssertionError();
-    }
+    public boolean callCanBurn(RegistryAccess pRecipe, @Nullable RecipeHolder<?> pInventory, NonNullList<ItemStack> pMaxStackSize, int p_155008_);
 
     @Invoker
-    public static boolean callBurn(RegistryAccess registryAccess, @Nullable RecipeHolder<?> recipe, NonNullList<ItemStack> inventory, int maxStackSize, AbstractFurnaceBlockEntity furnace) {
-        throw new AssertionError();
-    }
+    public boolean callBurn(RegistryAccess pRecipe, @Nullable RecipeHolder<?> pInventory, NonNullList<ItemStack> pMaxStackSize, int p_267157_);
 }

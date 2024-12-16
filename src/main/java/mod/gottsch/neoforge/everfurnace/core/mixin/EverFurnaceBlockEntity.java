@@ -60,12 +60,12 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
     }
 
     @Inject(method = "saveAdditional", at = @At("TAIL"))
-    private void onSave(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
+    private void onSave(CompoundTag tag, CallbackInfo ci) {
         tag.putLong(LAST_GAME_TIME_TAG, this.everfurnace$lastGameTime);
     }
 
-    @Inject(method = "loadAdditional", at = @At("TAIL"))
-    private void onLoad(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
+    @Inject(method = "load", at = @At("TAIL"))
+    private void onLoad(CompoundTag tag, CallbackInfo ci) {
         this.everfurnace$lastGameTime = tag.getLong(LAST_GAME_TIME_TAG);
     }
 
@@ -104,7 +104,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
         if (!outputStack.isEmpty() && outputStack.getCount() == blockEntity.getMaxStackSize()) return;
 
         // test if can accept recipe output
-        RecipeHolder recipeholder = everFurnaceBlockEntity.getQuickCheck().getRecipeFor(blockEntity, world).orElse(null);if (!IEverFurnaceBlockEntity.callCanBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) return;
+        RecipeHolder recipeholder = everFurnaceBlockEntity.getQuickCheck().getRecipeFor(blockEntity, world).orElse(null);if (!everFurnaceBlockEntity.callCanBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize())) return;
         /////////////////////////
 
         /*
@@ -168,7 +168,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
                 + (int) actualAppliedTime);
 
             if (everFurnaceBlockEntity.getCookingProgress() >= everFurnaceBlockEntity.getCookingTotalTime()) {
-                if (IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) {
+                if (everFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize())) {
                     blockEntity.setRecipeUsed(recipeholder);
                 }
                 if (cookStack.isEmpty()) {
@@ -188,7 +188,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
             // reduced stack by quotient
             boolean isSuccessful = false;
             for (int iterations = 0; iterations < quotient; iterations++) {
-                isSuccessful |= IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity);
+                isSuccessful |= everFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize());
             }
             // update last recipe
             if (isSuccessful) blockEntity.setRecipeUsed(recipeholder);
@@ -198,7 +198,7 @@ public abstract class EverFurnaceBlockEntity extends BaseContainerBlockEntity im
              + (int) remainder);
 
             if (everFurnaceBlockEntity.getCookingProgress() >= everFurnaceBlockEntity.getCookingTotalTime()) {
-                if (IEverFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize(), blockEntity)) {
+                if (everFurnaceBlockEntity.callBurn(world.registryAccess(), recipeholder, everFurnaceBlockEntity.getItems(), blockEntity.getMaxStackSize())) {
                     blockEntity.setRecipeUsed(recipeholder);
                 }
                 if (cookStack.isEmpty()) {
