@@ -17,6 +17,7 @@
  */
 package mod.gottsch.neoforge.everfurnace.core.mixin;
 
+import mod.gottsch.neoforge.everfurnace.core.furnace.IEverFurnaceBlockEntity;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
@@ -35,7 +36,7 @@ import javax.annotation.Nullable;
  * Created by Mark Gottschling on 12/13/2024
  */
 @Mixin(AbstractFurnaceBlockEntity.class)
-public interface IEverFurnaceBlockEntity {
+public interface IEverFurnaceBlockEntityMixin extends IEverFurnaceBlockEntity {
 
     @Accessor
     int getLitTime();

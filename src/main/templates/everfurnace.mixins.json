@@ -4,8 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "everfurnace.refmap.json",
   "mixins": [
-    "IEverFurnaceBlockEntity",
-    "EverFurnaceBlockEntity"
+    "IEverFurnaceBlockEntityMixin",
+    "EverFurnaceBlockEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
