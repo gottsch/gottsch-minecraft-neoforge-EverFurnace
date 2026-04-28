@@ -18,6 +18,7 @@
 package mod.gottsch.neoforge.everfurnace.core;
 
 import com.mojang.logging.LogUtils;
+import mod.gottsch.neoforge.everfurnace.core.command.ModCommands;
 import mod.gottsch.neoforge.everfurnace.core.config.EverFurnaceConfig;
 import mod.gottsch.neoforge.everfurnace.core.event.FurnaceEventHandler;
 import mod.gottsch.neoforge.everfurnace.core.network.ModNetwork;
@@ -47,5 +48,8 @@ public class EverFurnace {
 
         // Register game-event listeners (notifications, XP) on the NeoForge game bus.
         NeoForge.EVENT_BUS.register(FurnaceEventHandler.class);
+
+        // Register admin commands (inspect / tick / simulate) on the game bus.
+        NeoForge.EVENT_BUS.register(ModCommands.class);
     }
 }
