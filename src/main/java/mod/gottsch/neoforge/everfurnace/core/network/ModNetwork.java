@@ -19,8 +19,10 @@ package mod.gottsch.neoforge.everfurnace.core.network;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
@@ -54,14 +56,18 @@ public class ModNetwork {
 
     @SubscribeEvent
     public static void onRegisterPayloads(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+        // .optional() — vanilla clients (without the mod) silently skip this packet
+        // rather than disconnecting with an unknown-payload error.
+        final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION).optional();
 
         // Feature D / G / H — server → client catch-up effects packet.
         // Handler runs on the client main thread (NeoForge default).
+        // CatchupParticlePacket::handle performs a runtime Dist check before
+        // delegating to the @OnlyIn(CLIENT) CatchupParticleHandler.
         registrar.playToClient(
                 CatchupParticlePacket.TYPE,
                 CatchupParticlePacket.STREAM_CODEC,
-                CatchupParticleHandler::handle
+                CatchupParticlePacket::handle
         );
     }
 
@@ -70,18 +76,32 @@ public class ModNetwork {
     // -------------------------------------------------------------------------
 
     /**
-     * Sends a {@link CatchupParticlePacket} to all players within 32 blocks of
-     * {@code pos} in {@code level}.
+     * Sends a {@link CatchupParticlePacket} to nearby players that have EverFurnace installed.
      *
-     * <p>Call from the server tick after a successful catch-up pass.
+     * <p>Two cases require guarding:
+     * <ol>
+     *   <li>{@link ConnectionType#OTHER} (vanilla / non-NeoForge) clients have no payload
+     *       channel registry at all — skipped up front.</li>
+     *   <li>NeoForge clients that do NOT have EverFurnace installed pass the connection-type
+     *       check but still lack the channel in their per-connection {@code NetworkPayloadSetup}.
+     *       {@code NetworkRegistry.checkPacket} throws {@link UnsupportedOperationException}
+     *       for them even though the channel was registered as {@code .optional()}; the
+     *       {@code .optional()} flag only suppresses the handshake failure, not the send
+     *       check. We catch and silently ignore that case.</li>
+     * </ol>
      */
     public static void sendCatchupParticles(ServerLevel level, BlockPos pos) {
-        PacketDistributor.sendToPlayersNear(
-                level,
-                null,           // excluded player (none)
-                pos.getX(), pos.getY(), pos.getZ(),
-                32.0,           // radius
-                new CatchupParticlePacket(pos)
-        );
+        CatchupParticlePacket packet = new CatchupParticlePacket(pos);
+        double radiusSq = 32.0 * 32.0;
+        double cx = pos.getX() + 0.5, cy = pos.getY() + 0.5, cz = pos.getZ() + 0.5;
+        for (ServerPlayer player : level.players()) {
+            if (player.connection.getConnectionType().isOther()) continue;
+            if (player.distanceToSqr(cx, cy, cz) > radiusSq) continue;
+            try {
+                PacketDistributor.sendToPlayer(player, packet);
+            } catch (UnsupportedOperationException ignored) {
+                // NeoForge client without EverFurnace — channel not in their payload setup
+            }
+        }
     }
 }

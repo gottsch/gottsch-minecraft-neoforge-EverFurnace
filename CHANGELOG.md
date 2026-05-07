@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2026-04-28
+
+### ✨ Added
+
+- **Admin commands** — `/everfurnace inspect [x y z]`, `/everfurnace tick <radius>`,
+  `/everfurnace simulate <radius> <ticks>`. Require permission level 2.
+  - `inspect` shows the stored EverFurnace NBT state (lastGameTime, delta,
+    pendingNotification, pendingXp) and whether catch-up would fire on the next tick.
+  - `tick` forces `serverTick` on every loaded furnace within the given radius,
+    triggering catch-up immediately. Positions are snapshotted before iteration to
+    avoid concurrent-modification hazards.
+  - `simulate` backdates `lastGameTime` by the given number of ticks on every loaded
+    furnace within the given radius (radius guard prevents accidental dimension-wide
+    backdating). Follow with `tick` to apply catch-up instantly during testing.
+
+### 🐛 Fixed
+
+- **Vanilla clients can now connect to servers running EverFurnace** — the catch-up
+  particle packet is now registered as `.optional()`, so unmodded clients skip it
+  silently instead of disconnecting.
+- **Dedicated server classloading safety** — `CatchupParticlePacket` now holds the
+  registered handler method and gates execution behind a `FMLEnvironment.dist` check,
+  preventing the `@OnlyIn(CLIENT)` `CatchupParticleHandler` class from being touched
+  on dedicated server distributions.
+- `neoforge.mods.toml` now declares `side="SERVER"` — NeoForge will not require
+  clients to have the mod installed to join a server running it.
+
+---
+
 ## [2.1.0] - 2026-03-29
 
 ### 🎉 Highlights

@@ -23,6 +23,9 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * Sent server → client when catch-up completes and at least one item was cooked.
@@ -58,5 +61,19 @@ public record CatchupParticlePacket(BlockPos pos) implements CustomPacketPayload
     @Override
     public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    /**
+     * Packet handler registered with {@code playToClient}.
+     *
+     * <p>The runtime {@link FMLEnvironment#dist} check prevents
+     * {@link CatchupParticleHandler} (which is {@code @OnlyIn(CLIENT)}) from
+     * being classloaded on a dedicated server, where this handler is never
+     * invoked but the method reference is still captured at registration time.
+     */
+    public static void handle(CatchupParticlePacket packet, IPayloadContext context) {
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            CatchupParticleHandler.handle(packet, context);
+        }
     }
 }
