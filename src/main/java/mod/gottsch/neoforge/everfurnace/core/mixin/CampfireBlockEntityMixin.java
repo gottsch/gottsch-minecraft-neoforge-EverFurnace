@@ -1,0 +1,132 @@
+/*
+ * This file is part of EverFurnace.
+ * Copyright (c) 2026 Mark Gottschling (gottsch)
+ *
+ * EverFurnace is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * EverFurnace is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with EverFurnace.  If not, see <http://www.gnu.org/licenses/lgpl>.
+ */
+package mod.gottsch.neoforge.everfurnace.core.mixin;
+
+import mod.gottsch.neoforge.everfurnace.core.config.EverFurnaceConfig;
+import mod.gottsch.neoforge.everfurnace.core.network.ModNetwork;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.CampfireBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Adds offline catch-up to vanilla campfires (and soul campfires).
+ *
+ * <p>The vanilla {@code cookTick} ticker only runs for chunks that are actually
+ * ticking — i.e. within a player's simulation distance — and only while the
+ * campfire is lit (otherwise {@code cooldownTick} is registered instead). So
+ * proximity gating and the "is lit" check are both implicit in hooking this
+ * method: while no player is near, the ticker doesn't run and the real-world
+ * gap accumulates in {@link #everfurnace$lastGameTime}; when a player brings the
+ * chunk back into range the first tick applies the catch-up.
+ *
+ * <p>Rather than re-implement the recipe assemble / drop / slot-clear that the
+ * vanilla body performs on completion, this inject simply advances each slot's
+ * progress (capped at its total). A slot pushed to its total is completed by the
+ * vanilla body's own {@code ++}/threshold check that runs immediately after this
+ * inject returns. Each slot holds a single item and is not restocked, so output
+ * is inherently bounded to one item per slot.
+ *
+ * @author by Mark Gottschling on 2026
+ */
+@Mixin(CampfireBlockEntity.class)
+public abstract class CampfireBlockEntityMixin {
+
+    @Unique private static final String LAST_GAME_TIME_TAG = "everfurnace_lastGameTime";
+    @Unique private static final String NBT_VERSION_TAG    = "everfurnace_version";
+    @Unique private static final int    CURRENT_NBT_VERSION = 1;
+
+    @Unique private long everfurnace$lastGameTime;
+
+    // -------------------------------------------------------------------------
+    // NBT save / load
+    // -------------------------------------------------------------------------
+
+    @Inject(method = "saveAdditional", at = @At("TAIL"))
+    private void everfurnace$onSave(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
+        tag.putInt (NBT_VERSION_TAG,    CURRENT_NBT_VERSION);
+        tag.putLong(LAST_GAME_TIME_TAG, this.everfurnace$lastGameTime);
+    }
+
+    @Inject(method = "loadAdditional", at = @At("TAIL"))
+    private void everfurnace$onLoad(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
+        this.everfurnace$lastGameTime = tag.getLong(LAST_GAME_TIME_TAG);
+    }
+
+    // -------------------------------------------------------------------------
+    // Tick injection
+    // -------------------------------------------------------------------------
+
+    @Inject(method = "cookTick", at = @At("HEAD"))
+    private static void everfurnace$onCookTick(Level world, BlockPos pos, BlockState state,
+                                               CampfireBlockEntity blockEntity, CallbackInfo ci) {
+
+        if (!EverFurnaceConfig.COMMON.catchupEnabled.get()) return;
+
+        CampfireBlockEntityMixin mixin   = (CampfireBlockEntityMixin)(Object) blockEntity;
+        ICampfireBlockEntityMixin accessor = (ICampfireBlockEntityMixin)(Object) blockEntity;
+
+        long currentGameTime   = world.getGameTime();
+        long localLastGameTime = mixin.everfurnace$lastGameTime;
+
+        mixin.everfurnace$lastGameTime = currentGameTime;
+
+        if (localLastGameTime == 0L) return;
+
+        long deltaTime = currentGameTime - localLastGameTime;
+        if (deltaTime < EverFurnaceConfig.COMMON.minDeltaThreshold.get()) return;
+
+        deltaTime = Math.min(deltaTime, EverFurnaceConfig.COMMON.maxCatchupTicks.get());
+
+        NonNullList<ItemStack> items = blockEntity.getItems();
+        int[] cookingProgress = accessor.getCookingProgress();
+        int[] cookingTime     = accessor.getCookingTime();
+
+        boolean anyCompleted = false;
+
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i).isEmpty()) continue;
+
+            int total = cookingTime[i];
+            if (total <= 0) continue;
+
+            int remaining = total - cookingProgress[i];
+            if (deltaTime >= remaining) {
+                // Push to total; the vanilla body's ++/threshold check completes it this tick.
+                cookingProgress[i] = total;
+                anyCompleted = true;
+            } else {
+                cookingProgress[i] += (int) deltaTime;
+            }
+        }
+
+        if (anyCompleted && world instanceof ServerLevel serverLevel) {
+            ModNetwork.sendCatchupParticles(serverLevel, pos);
+        }
+    }
+}
