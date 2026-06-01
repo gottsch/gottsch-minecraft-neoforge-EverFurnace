@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.0] - 2026-06-01
+
+### 🎉 Highlights
+
+#### Other Mods Can Now Use EverFurnace Catch-Up
+- EverFurnace now has a public API that lets other mods add the same offline
+  catch-up behaviour to their own cooking blocks.
+- If a mod registers its cooking block with EverFurnace, players will get the
+  same "finished while you were away" experience for that block as they do for
+  vanilla furnaces and campfires — particle burst, chat notification, the works.
+- The first planned expansion using this is **EverFurnace: Farmer's Delight**,
+  which will bring catch-up to the Cooking Pot.
+
+#### Vanilla Cooking Blocks Now Use the Same System Internally
+- Furnaces, Blast Furnaces, Smokers, and Campfires all go through the new API
+  behind the scenes. Nothing changes for players — this just makes the whole mod
+  cleaner and easier to maintain.
+
+### ⚙️ Changed
+
+- No config changes. All existing settings work exactly as before.
+
+---
+
 ## [2.3.0] - 2026-05-29
 
 ### ✨ Added

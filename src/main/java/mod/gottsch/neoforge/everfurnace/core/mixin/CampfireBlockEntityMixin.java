@@ -17,14 +17,11 @@
  */
 package mod.gottsch.neoforge.everfurnace.core.mixin;
 
-import mod.gottsch.neoforge.everfurnace.core.config.EverFurnaceConfig;
-import mod.gottsch.neoforge.everfurnace.core.network.ModNetwork;
+import mod.gottsch.neoforge.everfurnace.api.EverFurnaceApi;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.CampfireBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -86,10 +83,9 @@ public abstract class CampfireBlockEntityMixin {
     private static void everfurnace$onCookTick(Level world, BlockPos pos, BlockState state,
                                                CampfireBlockEntity blockEntity, CallbackInfo ci) {
 
-        if (!EverFurnaceConfig.COMMON.catchupEnabled.get()) return;
+        if (!EverFurnaceApi.isCatchupEnabled()) return;
 
-        CampfireBlockEntityMixin mixin   = (CampfireBlockEntityMixin)(Object) blockEntity;
-        ICampfireBlockEntityMixin accessor = (ICampfireBlockEntityMixin)(Object) blockEntity;
+        CampfireBlockEntityMixin mixin = (CampfireBlockEntityMixin)(Object) blockEntity;
 
         long currentGameTime   = world.getGameTime();
         long localLastGameTime = mixin.everfurnace$lastGameTime;
@@ -99,34 +95,14 @@ public abstract class CampfireBlockEntityMixin {
         if (localLastGameTime == 0L) return;
 
         long deltaTime = currentGameTime - localLastGameTime;
-        if (deltaTime < EverFurnaceConfig.COMMON.minDeltaThreshold.get()) return;
+        if (deltaTime < EverFurnaceApi.getMinDeltaThreshold()) return;
 
-        deltaTime = Math.min(deltaTime, EverFurnaceConfig.COMMON.maxCatchupTicks.get());
+        deltaTime = Math.min(deltaTime, EverFurnaceApi.getMaxCatchupTicks());
 
-        NonNullList<ItemStack> items = blockEntity.getItems();
-        int[] cookingProgress = accessor.getCookingProgress();
-        int[] cookingTime     = accessor.getCookingTime();
-
-        boolean anyCompleted = false;
-
-        for (int i = 0; i < items.size(); i++) {
-            if (items.get(i).isEmpty()) continue;
-
-            int total = cookingTime[i];
-            if (total <= 0) continue;
-
-            int remaining = total - cookingProgress[i];
-            if (deltaTime >= remaining) {
-                // Push to total; the vanilla body's ++/threshold check completes it this tick.
-                cookingProgress[i] = total;
-                anyCompleted = true;
-            } else {
-                cookingProgress[i] += (int) deltaTime;
-            }
-        }
-
-        if (anyCompleted && world instanceof ServerLevel serverLevel) {
-            ModNetwork.sendCatchupParticles(serverLevel, pos);
+        final long finalDelta = deltaTime;
+        if (world instanceof ServerLevel serverLevel) {
+            EverFurnaceApi.findHandler(blockEntity)
+                    .ifPresent(handler -> handler.applyCatchup(blockEntity, finalDelta, serverLevel, pos));
         }
     }
 }
