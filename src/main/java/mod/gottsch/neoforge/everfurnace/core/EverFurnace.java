@@ -25,6 +25,7 @@ import mod.gottsch.neoforge.everfurnace.core.command.ModCommands;
 import mod.gottsch.neoforge.everfurnace.core.config.EverFurnaceConfig;
 import mod.gottsch.neoforge.everfurnace.core.event.FurnaceEventHandler;
 import mod.gottsch.neoforge.everfurnace.core.network.ModNetwork;
+import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -64,6 +65,13 @@ public class EverFurnace {
         EverFurnaceApi.registerHandler(BlockEntityType.SMOKER,        furnaceHandler);
         // Both CampfireBlock and SoulCampfireBlock share BlockEntityType.CAMPFIRE in 1.21.1.
         EverFurnaceApi.registerHandler(BlockEntityType.CAMPFIRE, campfireHandler);
+
+        // Capability default: catch up any modded furnace that subclasses
+        // AbstractFurnaceBlockEntity and reuses the vanilla ticker, even though it
+        // registers its own BlockEntityType.  The exact-type registrations above
+        // remain the override path; this only fills the gap they leave.  (No
+        // campfire fallback: CampfireBlockEntity is final and not subclassed.)
+        EverFurnaceApi.registerFallback(be -> be instanceof AbstractFurnaceBlockEntity, furnaceHandler);
 
         // Register the network payload handler on the mod bus.
         modEventBus.addListener(ModNetwork::onRegisterPayloads);
