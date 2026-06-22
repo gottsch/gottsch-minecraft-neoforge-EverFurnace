@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.2.0] - 2026-06-22
+
+### ✨ Added
+
+- **Brewing stands now keep brewing while you're away.** Leave potions brewing,
+  wander off far enough that the area stops ticking, and when you come back any
+  brews that would have finished are done — with a little burst of particles and a
+  quick message telling you how many brews finished. This shines for automated,
+  hopper-fed brewing setups, which can finish many brews during one long trip.
+- A new setting, **brewingStandCatchupEnabled** (on by default), lets you turn
+  brewing catch-up off on its own while still catching up furnaces and campfires.
+
+---
+
 ## [3.1.0] - 2026-06-04
 
 ### 🛠️ Fixed
