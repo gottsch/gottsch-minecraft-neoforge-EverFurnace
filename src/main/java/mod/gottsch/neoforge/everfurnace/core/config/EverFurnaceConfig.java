@@ -36,6 +36,8 @@ public class EverFurnaceConfig {
         public final ModConfigSpec.LongValue    maxCatchupTicks;
         public final ModConfigSpec.IntValue     minDeltaThreshold;
 
+        public final ModConfigSpec.BooleanValue brewingStandCatchupEnabled;
+
         public final ModConfigSpec.BooleanValue notifyPlayerOnCatchup;
         public final ModConfigSpec.LongValue    notificationCooldownTicks;
         public final ModConfigSpec.BooleanValue notifyOnLogin;
@@ -58,6 +60,15 @@ public class EverFurnaceConfig {
                             "Below this the furnace is considered actively ticking.",
                             "Range: 1 – 72 000")
                     .defineInRange("minDeltaThreshold", 20, 1, 72_000);
+
+            brewingStandCatchupEnabled = builder
+                    .comment("Per-block toggle for brewing stand catch-up.",
+                            "Brewing potions offline (especially with automated, hopper-fed stands)",
+                            "has a different balance profile than smelting, so it can be disabled",
+                            "independently while leaving furnace/campfire catch-up on.",
+                            "Requires the master 'catchupEnabled' to also be true.",
+                            "Default: true")
+                    .define("brewingStandCatchupEnabled", true);
 
             builder.pop().push("notifications");
 
