@@ -1,3 +1,12 @@
+/*
+ * This file is part of EverFurnace.
+ * Copyright (c) 2026 Mark Gottschling (gottsch)
+ *
+ * Licensed under the MIT License. See LICENSE.txt in the project root
+ * for the full license text.
+ *
+ * SPDX-License-Identifier: MIT
+ */
 package mod.gottsch.neoforge.everfurnace.core.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
