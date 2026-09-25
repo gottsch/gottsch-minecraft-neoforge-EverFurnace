@@ -2,18 +2,10 @@
  * This file is part of EverFurnace.
  * Copyright (c) 2026 Mark Gottschling (gottsch)
  *
- * EverFurnace is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the MIT License. See LICENSE.txt in the project root
+ * for the full license text.
  *
- * EverFurnace is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with EverFurnace.  If not, see <http://www.gnu.org/licenses/lgpl>.
+ * SPDX-License-Identifier: MIT
  */
 package mod.gottsch.neoforge.everfurnace.core.catchup;
 
@@ -30,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionBrewing;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 
@@ -155,17 +148,21 @@ public class BrewingStandCatchupHandler implements CookingCatchupHandler {
         }
     }
 
-    /** "[EverFurnace] Your brewing stand finished <n> brew(s) while you were away." */
+    /**
+     * "[EverFurnace] Your Brewing Stand finished <n> brew(s) while you were away."
+     *
+     * <p>The block noun is passed as a translatable argument rather than baked into
+     * the sentence, matching how the furnace messages are built.
+     */
     private static Component brewMessage(int brews) {
         return Component.literal("[EverFurnace] ")
                 .withStyle(style -> style.withColor(0xFFA500))
-                .append(Component.literal("Your brewing stand finished ")
-                        .withStyle(style -> style.withColor(ChatFormatting.WHITE)))
-                .append(Component.literal(String.valueOf(brews))
-                        .withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true)))
-                .append(Component.literal(brews == 1 ? " brew" : " brews")
-                        .withStyle(style -> style.withColor(ChatFormatting.WHITE)))
-                .append(Component.literal(" while you were away.")
+                .append(Component.translatable(
+                                brews == 1 ? "message.everfurnace.brewed.one"
+                                           : "message.everfurnace.brewed.many",
+                                Blocks.BREWING_STAND.getName(),
+                                Component.literal(String.valueOf(brews))
+                                        .withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true)))
                         .withStyle(style -> style.withColor(ChatFormatting.WHITE)));
     }
 }
